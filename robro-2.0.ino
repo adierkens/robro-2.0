@@ -102,9 +102,9 @@ void loop() {
     // Check for alignment and outside corners
     
     if ( frontLeftDistance < LEFT_FOLLOWING_DISTANCE) {
+      bool frontWithinTollerance = frontLeftDistance > (LEFT_FOLLOWING_DISTANCE + FOLLOWING_TOLLERANCE);
+      
       if (backLeftDistance < LEFT_FOLLOWING_DISTANCE) {
-        
-        bool frontWithinTollerance = frontLeftDistance > (LEFT_FOLLOWING_DISTANCE + FOLLOWING_TOLLERANCE);
         bool backWithinTollerance = backLeftDistance > (LEFT_FOLLOWING_DISTANCE + FOLLOWING_TOLLERANCE);
 
         if (!frontWithinTollerance || !backWithinTollerance) {
@@ -131,8 +131,14 @@ void loop() {
       } else {
         // Front Left is within following distance
         // Back left isn't
-        // We're skewed heading towards the wall, just keep going forward 
-          forward();
+        // We're skewed heading towards the wall
+
+          if (!frontWithinTollerance ) {
+            // Front is too close to the wall
+            slightRight();
+          } else { 
+            forward();
+          }
       }
     
     } else {
