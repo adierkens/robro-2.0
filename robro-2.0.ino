@@ -24,16 +24,7 @@
 #define FRONT_FOLLOWING_DISTANCE 10
 #define LEFT_FOLLOWING_DISTANCE 10
 
-/*
- * Anything further than FOLLOWING_DISTANCE + THRESHOLD is considered not near a wall
- */
-#define FRONT_SENSOR_THRESHOLD 10
-#define FRONT_LEFT_SENSOR_THRESHOLD 10
-#define BACK_LEFT_SENSOR_THRESHOLD 10
-
-#define FOLLOWING_TOLLERANCE 1
-
-#define OUTSIDE_CORNER_THRESHOLD 10 // Difference between front and back sensors to determine an outside corner
+#define FOLLOWING_TOLLERANCE 3
 
 Ultrasonic front_ultrasonic(FRONT_SENSOR_TRIG_PIN,FRONT_SENSOR_ECHO_PIN);
 Ultrasonic front_left_ultrasonic(FRONT_LEFT_SENSOR_TRIG_PIN, FRONT_LEFT_SENSOR_ECHO_PIN);
@@ -47,7 +38,7 @@ void stopServos() {
 }
 
 void forward() {
-  rightServo.write(178);
+  rightServo.write(180);
   leftServo.write(0);
 }
 
@@ -59,6 +50,16 @@ void turnLeft() {
 void turnRight() {
   leftServo.write(0);
   rightServo.write(0);
+}
+
+void slightRight() {
+  rightServo.write(170);
+  leftServo.write(0);
+}
+
+void slightLeft() {
+  rightServo.write(180);
+  leftServo.write(10);
 }
 
 void setup() {
@@ -100,21 +101,49 @@ void loop() {
     // Nothing in front of us
     // Check for alignment and outside corners
     
-    if ( frontLeftDistance > (FRONT_LEFT_THRESHOLD + LEFT_FOLLOWING_DISTANCE) && backLeftDistance > (BACK_LEFT_THRESHOLD + LEFT_FOLLOWING_DISTANCE)) {
-      // There's nothing to our left and nothing in front
-      // We're in open space - keep going straight
-      forward();
-    } else if ( frontLeftDistance > (FRONT_LEFT_THRESHOLD + LEFT_FOLLOWING_DISTANCE) && backLeftDistance < (BACK_LEFT_THRESHOLD + LEFT_FOLLOWING_DISTANCE)) {
-      // The front sensor doesn't sense a wall but the back one does
+    if ( frontLeftDistance < LEFT_FOLLOWING_DISTANCE) {
+      if (backLeftDistance < LEFT_FOLLOWING_DISTANCE) {
+        
+        bool frontWithinTollerance = frontLeftDistance > (LEFT_FOLLOWING_DISTANCE + FOLLOWING_TOLLERANCE);
+        bool backWithinTollerance = backLeftDistance > (LEFT_FOLLOWING_DISTANCE + FOLLOWING_TOLLERANCE);
 
-      if ( backLeftDistance < LEFT_FOLLOWING_DISTANCE && (frontLeftDistance - backLeftDistance) > OUTSIDE_CORNER_THRESHOLD ) {
-        // The back sensor is close enough to our following distance
-        // This is probably an inside corner
-        turnLeft();
+        if (!frontWithinTollerance || !backWithinTollerance) {
+          // One of the sensors is closer to the wall than we'd like
+
+          if (frontWithinTollerance) {
+            // The back is closer to the wall than we'd like
+            // but the front is fine. We're turning away from it anyway so just keep going straight
+            forward();
+          } else if (backWithinTollerance) {
+            // The front is closer to the wall than we'd like
+            // but the back is fine. Turn slightly right so we don't hit it.
+            slightRight();
+          } else {
+            // Both are too close to the wall.
+            slightRight();
+          }
+
+        } else {
+          // Both are within the following distance
+          // Keep following the wall
+          forward();
+        }
+      } else {
+        // Front Left is within following distance
+        // Back left isn't
+        // We're skewed heading towards the wall, just keep going forward 
+          forward();
       }
-    } else if ( frontLeftDistance < LEFT_FOLLOWING_DISTANCE && backLeftDistance < LEFT_FOLLOWING_DISTANCE) {
-      // Follow the wall
-      forward();
+    
+    } else {
+      // Front Left is too far from the wall
+      if (backLeftDistance < LEFT_FOLLOWING_DISTANCE) {
+        // We hit an outside corner
+        turnLeft();
+      } else {
+        // Both front and back left are too far from the wall
+        forward();
+      }
     }
   }
   
