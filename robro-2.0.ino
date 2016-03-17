@@ -93,7 +93,37 @@ distance calcDistance() {
 
 bool run = false;
 
-void handleOutsideCorner(distance d) {
+void handleInsideCorner(distance d) {
+  Serial.println("Hit inside corner");
+
+  // Initiate the right turn
+  float left = 180;
+  float right = RIGHT_SERVO_STOP;
+  
+  leftServo.write(left);
+  rightServo.write(right);
+  delay(800);
+
+  stopServos();
+  run = true;
+}
+
+void loop() {
+
+  distance d = calcDistance();
+
+  if (run) {
+    return;
+  }
+
+  // Follow wall
+  if ((d.front) < (2 * FOLLOWING_DISTANCE)) {
+    handleInsideCorner(d);
+  } else {
+    forward();
+  }
+
+/*void handleOutsideCorner(distance d) {
   Serial.println("Hit outside corner");
 
   // Initiate the left turn
@@ -121,5 +151,5 @@ void loop() {
     handleOutsideCorner(d);
   } else {
     forward();
-  }
+  }*/
 }
