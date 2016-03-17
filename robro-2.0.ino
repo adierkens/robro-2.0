@@ -18,14 +18,14 @@
 #define BACK_LEFT_SENSOR_TRIG_PIN 28
 #define BACK_LEFT_SENSOR_ECHO_PIN 29
 
-#define FRONT_FOLLOWING_DISTANCE 15
-#define LEFT_FOLLOWING_DISTANCE 15
+#define FOLLOWING_DISTANCE 20
+#define FOLLOWING_TOLLERANCE 5
 
-#define FOLLOWING_TOLLERANCE 7
+// #define SENSOR_RIGHT_SIDE
 
 Ultrasonic front_ultrasonic(FRONT_SENSOR_TRIG_PIN,FRONT_SENSOR_ECHO_PIN);
-Ultrasonic front_left_ultrasonic(FRONT_LEFT_SENSOR_TRIG_PIN, FRONT_LEFT_SENSOR_ECHO_PIN);
-Ultrasonic back_left_ultrasonic(BACK_LEFT_SENSOR_TRIG_PIN, BACK_LEFT_SENSOR_ECHO_PIN);
+Ultrasonic front_side_ultrasonic(FRONT_LEFT_SENSOR_TRIG_PIN, FRONT_LEFT_SENSOR_ECHO_PIN);
+Ultrasonic back_side_ultrasonic(BACK_LEFT_SENSOR_TRIG_PIN, BACK_LEFT_SENSOR_ECHO_PIN);
 
 Servo rightServo, leftServo; 
 
@@ -35,43 +35,47 @@ void stopServos() {
   leftServo.write(LEFT_SERVO_STOP);
 }
 
+void backwards() {
+  Serial.println("Moving backwards");
+  rightServo.write(0);
+  leftServo.write(180);
+}
+
 void forward() {
-  Serial.println("Forward");
+  Serial.println("Moving forward");
   rightServo.write(180);
   leftServo.write(0);
 }
 
 void turnRight() {
-  Serial.println("Right turn");
+  Serial.println("Turning right");
   rightServo.write(180);
   leftServo.write(180);
 }
 
 void turnLeft() {
-  Serial.println("Left turn");
+  Serial.println("Turning left");
   leftServo.write(0);
   rightServo.write(0);
 }
 
-void slightLeft() {
-  Serial.println("Slight left");
-  rightServo.write(150);
-  leftServo.write(0);
+void turnSlightLeft() {
+  Serial.println("Turning slightly left");
+  rightServo.write(100);
+  leftServo.write(60);
 }
 
-void slightRight() {
-  Serial.println("Slight right");
-  rightServo.write(180);
-  leftServo.write(30);
+void turnSlightRight() {
+  Serial.println("Turning slightly right");
+  rightServo.write(120);
+  leftServo.write(88);
 }
 
 void setup() {
-  Serial.begin(9600);//set Serial Baud rate
-  Serial.println("Ultrasonic sensor starting!!!!!");
+  Serial.begin(9600);
   rightServo.attach(RIGHT_SERVO_PIN);
   leftServo.attach(LEFT_SERVO_PIN);
-  
-  // Power and Gnd for front left sensor
+   
   pinMode(PWR_PIN_0, OUTPUT);
   digitalWrite(PWR_PIN_0, HIGH);
   
@@ -79,28 +83,63 @@ void setup() {
   digitalWrite(GND_PIN_0, LOW);
 }
 
-void loop() {
-  long frontmicrosec = front_ultrasonic.timing();
-  float frontDistance = front_ultrasonic.CalcDistance(frontmicrosec,Ultrasonic::CM);
-  
-  long frontLeftMicrosec = front_left_ultrasonic.timing();
-  float frontLeftDistance = front_left_ultrasonic.CalcDistance(frontLeftMicrosec, Ultrasonic::CM);
-  delay(10);
-  long backLeftMicrosec = back_left_ultrasonic.timing();
-  float backLeftDistance = back_left_ultrasonic.CalcDistance(backLeftMicrosec, Ultrasonic::CM);
-
+void printDistance(float front, float frontSide, float backSide) {
   Serial.print("Front: ");
-  Serial.print(frontDistance);
-  Serial.print(" Left Front: ");
-  Serial.print(frontLeftDistance);
-  Serial.print(" Left Back: ");
-  Serial.println(backLeftDistance);
+  Serial.print(front);
+  Serial.print(" FrontSide: ");
+  Serial.print(frontSide);
+  Serial.print(" BackSide: ");
+  Serial.println(backSide);
+}
 
-  if (frontLeftDistance < LEFT_FOLLOWING_DISTANCE) {
-    slightRight();
+void loop() {
+
+  long frontSideMicroSec = front_side_ultrasonic.timing();
+  float frontSideDistance = front_side_ultrasonic.CalcDistance(frontSideMicroSec, Ultrasonic::CM);
+  delay(5);
+  long backSideMicroSec = back_side_ultrasonic.timing();
+  float backSideDistance = back_side_ultrasonic.CalcDistance(backSideMicroSec, Ultrasonic::CM);
+
+  long frontMicroSec = front_ultrasonic.timing();
+  float frontDistance = front_ultrasonic.CalcDistance(frontMicroSec, Ultrasonic::CM);
+
+  printDistance(frontDistance, frontSideDistance, backSideDistance);
+
+  if (frontDistance < FOLLOWING_DISTANCE) {
+    turnRight();
   } else {
-    slightLeft();
-  }
-  
-  delay(10); 
+    if (frontSideDistance < FOLLOWING_DISTANCE) {
+      bool frontSideWithinTollerance = frontSideDistance > (FOLLOWING_DISTANCE + FOLLOWING_TOLLERANCE);
+
+      if (backSideDistance < FOLLOWING_DISTANCE) {
+        bool backSideWithinTollerance = backSideDistance > (FOLLOWING_DISTANCE + FOLLOWING_TOLLERANCE);
+
+        if (!frontSideWithinTollerance || !backSideWithinTollerance) {
+
+          if (frontSideWithinTollerance) {
+            forward();
+          } else if (backSideWithinTollerance) {
+            turnSlightRight();
+          } else {
+            turnSlightRight();
+          }
+          
+        } else {
+          forward();
+        }
+      } else {
+        if (!frontSideWithinTollerance) {
+          turnSlightRight();
+        } else {
+          forward();
+        }
+      }
+    } else {
+      if (backSideDistance < FOLLOWING_DISTANCE) {
+        turnLeft();
+      } else {
+        forward();
+      }
+    }
+  }  
 }
