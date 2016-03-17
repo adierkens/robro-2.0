@@ -71,23 +71,23 @@ void spinRight() {
 }
 
 void turnRight() {
-  rightServo.write(180);
-  leftServo.write(40);
+  rightServo.write(110);
+  leftServo.write(90);
 }
 
 void turnLeft() {
-  rightServo.write(150);
-  leftServo.write(0);
+  rightServo.write(98);
+  leftServo.write(70);
 }
 
 void backRight() {
-  rightServo.write(0);
-  leftServo.write(LEFT_SERVO_STOP);
+  rightServo.write(RIGHT_SERVO_STOP);
+  leftServo.write(180);
 }
 
 void backLeft() {
-  rightServo.write(RIGHT_SERVO_STOP);
-  leftServo.write(180);
+  rightServo.write(0);
+  leftServo.write(LEFT_SERVO_STOP);
 }
 
 void slightRight() {
@@ -124,10 +124,10 @@ void setup() {
 
 void loop() {
   long frontmicrosec = front_ultrasonic.timing();
-  float frontDistance = front_ultrasonic.CalcDistance(frontmicrosec,Ultrasonic::CM);
+  float frontDistance = front_ultrasonic.CalcDistance(frontmicrosec,Ultrasonic::IN);
   
   long frontSideMicrosec = front_side_ultrasonic.timing();
-  float frontSideDistance = front_side_ultrasonic.CalcDistance(frontSideMicrosec, Ultrasonic::CM);
+  float frontSideDistance = front_side_ultrasonic.CalcDistance(frontSideMicrosec, Ultrasonic::IN);
 
 //  long backSideMicrosec = back_side_ultrasonic.timing();
 //  float backSideDistance = back_side_ultrasonic.CalcDistance(backSideMicrosec, Ultrasonic::CM);
@@ -135,7 +135,7 @@ void loop() {
   Serial.print("Front: ");
   Serial.print(frontDistance);
   Serial.print(" Side Front: ");
-  Serial.print(frontSideDistance);
+  Serial.println(frontSideDistance);
 //  Serial.print(" Side Back: ");
 //  Serial.println(backSideDistance);
 
@@ -149,18 +149,20 @@ void loop() {
       // Nothing in front of us
       // Check for alignment and outside corners
       
-      if (frontSideDistance < SIDE_FOLLOWING_DISTANCE - FOLLOWING_TOLLERANCE) {
+      if (frontSideDistance < 10) {//SIDE_FOLLOWING_DISTANCE - FOLLOWING_TOLLERANCE) {
         //We are too close to the wall, turn away.
+//        Serial.println("RIGHT");
         turnRight();
       }
-      else if (frontSideDistance > SIDE_FOLLOWING_DISTANCE - FOLLOWING_TOLLERANCE) {
+      else { //if (frontSideDistance > SIDE_FOLLOWING_DISTANCE + FOLLOWING_TOLLERANCE) {
         //We are too far from the wall, turn towards it.
+//        Serial.println("LEFT");
         turnLeft();
       }
-      else {
-        //All distances are within tollerances. Continue forward.
-        forward();
-      }
+      //else {
+      //  //All distances are within tollerances. Continue forward.
+      //  forward();
+      //}
     }
   }
   else {
