@@ -59,16 +59,26 @@ void turnLeft() {
   rightServo.write(0);
 }
 
-void turnSlightLeft() {
+void turnSlightLeft(float distance) {
   Serial.println("Turning slightly left");
-  rightServo.write(100);
-  leftServo.write(60);
+  float newd = distance - FOLLOWING_DISTANCE;
+  if (distance - FOLLOWING_DISTANCE > FOLLOWING_DISTANCE){
+    newd = FOLLOWING_DISTANCE;
+  }
+  long right = RIGHT_SERVO_STOP + 5 + 2 * newd;
+  long left = LEFT_SERVO_STOP - 5 - 5 * newd;
+  rightServo.write(right);
+  leftServo.write(left);
 }
 
-void turnSlightRight() {
+void turnSlightRight(float distance) {
   Serial.println("Turning slightly right");
-  rightServo.write(120);
-  leftServo.write(88);
+  float newd = FOLLOWING_DISTANCE - distance;
+
+  float right = RIGHT_SERVO_STOP + 5 + 5 * newd;
+  float left = LEFT_SERVO_STOP - 5 - 2 * newd;
+  rightServo.write(right);
+  leftServo.write(left);
 }
 
 void setup() {
@@ -105,6 +115,9 @@ void loop() {
 
   printDistance(frontDistance, frontSideDistance, backSideDistance);
 
+  float avgDistance = (frontSideDistance + backSideDistance) / 2;
+
+
   if (frontDistance < FOLLOWING_DISTANCE) {
     turnRight();
   } else {
@@ -112,6 +125,8 @@ void loop() {
       bool frontSideWithinTollerance = frontSideDistance > (FOLLOWING_DISTANCE + FOLLOWING_TOLLERANCE);
 
       if (backSideDistance < FOLLOWING_DISTANCE) {
+
+        
         bool backSideWithinTollerance = backSideDistance > (FOLLOWING_DISTANCE + FOLLOWING_TOLLERANCE);
 
         if (!frontSideWithinTollerance || !backSideWithinTollerance) {
@@ -119,9 +134,9 @@ void loop() {
           if (frontSideWithinTollerance) {
             forward();
           } else if (backSideWithinTollerance) {
-            turnSlightRight();
+            turnSlightRight(avgDistance);
           } else {
-            turnSlightRight();
+            turnSlightRight(avgDistance);
           }
           
         } else {
@@ -129,7 +144,7 @@ void loop() {
         }
       } else {
         if (!frontSideWithinTollerance) {
-          turnSlightRight();
+          turnSlightRight(avgDistance);
         } else {
           forward();
         }
