@@ -82,37 +82,50 @@ distance calcDistance() {
   delay(2);
   long backSideMicroSec = back_side_ultrasonic.timing();
   calcD.backSide = back_side_ultrasonic.CalcDistance(backSideMicroSec, Ultrasonic::CM);
-
   long frontMicroSec = front_ultrasonic.timing();
   calcD.front = front_ultrasonic.CalcDistance(frontMicroSec, Ultrasonic::CM);
-
+  
   printDistance(calcD);
-
   return calcD;  
 }
 
-bool run = false;
+bool ran = false;
 
 void handleOutsideCorner(distance d) {
   Serial.println("Hit outside corner");
 
   // Initiate the left turn
   float right = 0;
-  float left = LEFT_SERVO_STOP;
+  float left = LEFT_SERVO_STOP + 2;
   
   leftServo.write(left);
-  rightServo.write(right);
-  delay(800);
+  rightServo.write(right);  
+  delay(2500);
 
+  float diff = d.frontSide - d.backSide;
+  
+  while ( diff > FOLLOWING_TOLLERANCE || diff < -FOLLOWING_TOLLERANCE) {
+    left += 2;
+
+    leftServo.write(left);
+    rightServo.write(right);
+
+    d = calcDistance();
+    delay(5);
+  }
+  Serial.println("Done with corner");
+  forward();
+  delay(50);
+  
   stopServos();
-  run = true;
+  ran = true;
 }
 
 void loop() {
 
   distance d = calcDistance();
 
-  if (run) {
+  if (ran) {
     return;
   }
 
