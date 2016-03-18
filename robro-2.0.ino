@@ -104,52 +104,43 @@ void handleInsideCorner(distance d) {
   rightServo.write(right);
   delay(800);
 
+  do{
+    d = calcDistance();
+    leftServo.write(left);
+    rightServo.write(right);
+  }while(abs(d.frontSide-d.backSide)>1);
+  
+  do{
+    d = calcDistance();
+    forward();
+  }while(abs(d.frontSide-d.backSide)<100);
+
   stopServos();
   run = true;
 }
 
 void loop() {
 
-  distance d = calcDistance();
-
+  distance d;
+  int rep = 0;
+  
   if (run) {
     return;
   }
-
   // Follow wall
-  if ((d.front) < (2 * FOLLOWING_DISTANCE)) {
+  for (int i=0; i<6; i++){
+    d = calcDistance();
+    if ((d.front) < (2 * FOLLOWING_DISTANCE)) {
+    rep++;
+   } 
+  }
+  
+  
+  if (rep >= 5) {
     handleInsideCorner(d);
   } else {
     forward();
   }
 
-/*void handleOutsideCorner(distance d) {
-  Serial.println("Hit outside corner");
-
-  // Initiate the left turn
-  float right = 0;
-  float left = LEFT_SERVO_STOP;
-  
-  leftServo.write(left);
-  rightServo.write(right);
-  delay(800);
-
-  stopServos();
-  run = true;
 }
 
-void loop() {
-
-  distance d = calcDistance();
-
-  if (run) {
-    return;
-  }
-
-  // Follow wall
-  if ((d.frontSide - d.backSide) > (2 * FOLLOWING_DISTANCE)) {
-    handleOutsideCorner(d);
-  } else {
-    forward();
-  }*/
-}
