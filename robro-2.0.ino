@@ -99,9 +99,9 @@ void handleOutsideCorner() {
   delay(900);
   left = LEFT_SERVO_STOP + 2;
   leftServo.write(left);
-  delay(700);
+  delay(800);
   forward();
-  delay(2300);
+  delay(2000);
 }
 
 void handleInsideCorner(distance d) {
@@ -137,7 +137,7 @@ void loop() {
   // Follow wall
   if (rep >= 5) {
     handleInsideCorner(d);
-  } else if (d.frontSide > 7 * (d.backSide)) {
+  } else if (d.frontSide > 4 * (d.backSide)) {
     handleOutsideCorner();
   } else {
     float diff = 1.0 * d.frontSide - d.backSide;
@@ -145,16 +145,15 @@ void loop() {
     if (diff < -desiredDiff) {
         rightServo.write(RIGHT_SERVO_STOP - 2);
         leftServo.write(LEFT_SERVO_STOP + 10);
-
+        delay(5);
     } else if ( diff > desiredDiff) {
       rightServo.write(RIGHT_SERVO_STOP - 10);
       leftServo.write(LEFT_SERVO_STOP + 2);
-
-
+      delay(5);
     } else {
       forward();
+      delay(15);
     }
     
   }
-  delay(10);
 }
