@@ -19,7 +19,7 @@
 #define BACK_LEFT_SENSOR_TRIG_PIN 28
 #define BACK_LEFT_SENSOR_ECHO_PIN 29
 
-#define FOLLOWING_DISTANCE 20
+#define FOLLOWING_DISTANCE 10
 #define FOLLOWING_TOLLERANCE 5
 
 struct distance {
@@ -82,57 +82,79 @@ distance calcDistance() {
   delay(2);
   long backSideMicroSec = back_side_ultrasonic.timing();
   calcD.backSide = back_side_ultrasonic.CalcDistance(backSideMicroSec, Ultrasonic::CM);
+  delay(2);
   long frontMicroSec = front_ultrasonic.timing();
   calcD.front = front_ultrasonic.CalcDistance(frontMicroSec, Ultrasonic::CM);
-  
   printDistance(calcD);
   return calcD;  
 }
 
-bool ran = false;
-
-void handleOutsideCorner(distance d) {
+void handleOutsideCorner() {
   Serial.println("Hit outside corner");
-
   // Initiate the left turn
   float right = 0;
-  float left = LEFT_SERVO_STOP + 2;
-  
+  float left = LEFT_SERVO_STOP + 1;
   leftServo.write(left);
   rightServo.write(right);  
-  delay(2500);
+  delay(900);
+  left = LEFT_SERVO_STOP + 2;
+  leftServo.write(left);
+  delay(700);
+  forward();
+  delay(2300);
+}
 
-  float diff = d.frontSide - d.backSide;
+void handleInsideCorner(distance d) {
+  Serial.println("Hit inside corner");
   
-  while ( diff > FOLLOWING_TOLLERANCE || diff < -FOLLOWING_TOLLERANCE) {
-    left += 2;
+  
+  // Initiate the right turn
+  float left = 180;
+  float right = RIGHT_SERVO_STOP;
+  
+  leftServo.write(left);
+  rightServo.write(right);
+  delay(700);
 
+  do{
+    d = calcDistance();
     leftServo.write(left);
     rightServo.write(right);
-
-    d = calcDistance();
-    delay(5);
-  }
-  Serial.println("Done with corner");
-  forward();
-  delay(50);
+  } while(abs(d.frontSide-d.backSide)>2);
   
-  stopServos();
-  ran = true;
 }
 
 void loop() {
-
   distance d = calcDistance();
-
-  if (ran) {
-    return;
+  int rep = 0;
+  for (int i=0; i<5; i++) {
+    d = calcDistance();
+    if (d.front < (4 * FOLLOWING_DISTANCE)) {
+      rep++;
+    }
   }
 
   // Follow wall
-  if ((d.frontSide - d.backSide) > (2 * FOLLOWING_DISTANCE)) {
-    handleOutsideCorner(d);
+  if (rep >= 5) {
+    handleInsideCorner(d);
+  } else if (d.frontSide > 7 * (d.backSide)) {
+    handleOutsideCorner();
   } else {
-    forward();
+    float diff = 1.0 * d.frontSide - d.backSide;
+    const int desiredDiff = 2;
+    if (diff < -desiredDiff) {
+        rightServo.write(RIGHT_SERVO_STOP - 2);
+        leftServo.write(LEFT_SERVO_STOP + 10);
+
+    } else if ( diff > desiredDiff) {
+      rightServo.write(RIGHT_SERVO_STOP - 10);
+      leftServo.write(LEFT_SERVO_STOP + 2);
+
+
+    } else {
+      forward();
+    }
+    
   }
+  delay(10);
 }
