@@ -1,52 +1,71 @@
 #include <QTRSensors.h>
+#include <Servo.h>
 
-// This example is designed for use with eight QTR-1RC sensors or the eight sensors of a
-// QTR-8RC module.  These reflectance sensors should be connected to digital inputs 3 to 10.
-// The QTR-8RC's emitter control pin (LEDON) can optionally be connected to digital pin 2, 
-// or you can leave it disconnected and change the EMITTER_PIN #define below from 2 to 
-// QTR_NO_EMITTER_PIN.
+#define RIGHT_SERVO_PIN 10
+#define LEFT_SERVO_PIN 9
 
-// The main loop of the example reads the raw sensor values (uncalibrated).
-// You can test this by taping a piece of 3/4" black electrical tape to a piece of white 
-// paper and sliding the sensor across it.  It prints the sensor values to the serial 
-// monitor as numbers from 0 (maximum reflectance) to 2500 (minimum reflectance).
-
+#define RIGHT_SERVO_STOP 95
+#define LEFT_SERVO_STOP 93
 
 #define NUM_SENSORS   8     // number of sensors used
 #define TIMEOUT       2500  // waits for 2500 microseconds for sensor outputs to go low
-#define EMITTER_PIN   44     // emitter is controlled by digital pin 2
+#define EMITTER_PIN   44    // emitter is controlled by digital pin 2
+#define SENSOR_START_PIN 30
 
-// sensors 0 through 7 are connected to digital pins 3 through 10, respectively
-QTRSensorsRC qtrrc((unsigned char[]) {30, 31, 32, 33, 34, 35, 36, 37},
-  NUM_SENSORS, TIMEOUT, EMITTER_PIN); 
+#define BLACK_TAPE_MIN 750
+#define BLACK_TAPE_MAX 1000
+
+#define GRAY_TAPE_MIN 0
+#define GRAY_TAPE_MAX 250
+
+Servo rightServo;
+Servo leftServo;
+QTRSensorsRC qtrc((unsigned char[]) { 30, 31, 32, 33, 34, 35, 36, 37}, NUM_SENSORS, TIMEOUT, QTR_NO_EMITTER_PIN); 
 unsigned int sensorValues[NUM_SENSORS];
 
+void stopServos() {
+  Serial.println("Stopping");
+  rightServo.write(RIGHT_SERVO_STOP);
+  leftServo.write(LEFT_SERVO_STOP);
+}
 
-void setup()
-{
-  delay(500);
-  Serial.begin(9600); // set the data rate in bits per second for serial data transmission
+void backwards() {
+  Serial.println("Moving backwards");
+  rightServo.write(180);
+  leftServo.write(0);
+}
+
+void forward() {
+  Serial.println("Moving forwards");
+  rightServo.write(0);
+  leftServo.write(180);
+}
+
+void setup() {
+  Serial.begin(9600);
+  
+  rightServo.attach(RIGHT_SERVO_PIN);
+  leftServo.attach(LEFT_SERVO_PIN);
+
   delay(1000);
-   int i;
-  for (i = 0; i < 250; i++)  // make the calibration take about 5 seconds
-  {
-    qtrrc.calibrate();
+  for (int i = 0; i < 250; i++) {
+    qtrc.calibrate();
     delay(20);
   }
 }
 
+void readSensorValues() {
+  qtrc.readCalibrated(sensorValues);
+}
 
-void loop()
-{
-  // read raw sensor values
-  qtrrc.readCalibrated(sensorValues);
 
-  // print the sensor values as numbers from 0 to 2500, where 0 means maximum reflectance and
-  // 1023 means minimum reflectance
-  for (unsigned char i = 0; i < NUM_SENSORS; i++)
-  {
+
+void loop() {
+  readSensorValues();
+
+  for (unsigned char i = 0; i < NUM_SENSORS; i++) {
     Serial.print(sensorValues[i]);
-    Serial.print('\t'); // tab to format the raw data into columns in the Serial monitor
+    Serial.print('\t');
   }
   Serial.println();
   
