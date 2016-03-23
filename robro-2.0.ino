@@ -1,160 +1,54 @@
-#include <Ultrasonic.h>
-#include <Servo.h>
+#include <QTRSensors.h>
 
-#define RIGHT_SERVO_PIN 10
-#define LEFT_SERVO_PIN 9
+// This example is designed for use with eight QTR-1RC sensors or the eight sensors of a
+// QTR-8RC module.  These reflectance sensors should be connected to digital inputs 3 to 10.
+// The QTR-8RC's emitter control pin (LEDON) can optionally be connected to digital pin 2, 
+// or you can leave it disconnected and change the EMITTER_PIN #define below from 2 to 
+// QTR_NO_EMITTER_PIN.
 
-#define RIGHT_SERVO_STOP 95
-#define LEFT_SERVO_STOP 93
+// The main loop of the example reads the raw sensor values (uncalibrated).
+// You can test this by taping a piece of 3/4" black electrical tape to a piece of white 
+// paper and sliding the sensor across it.  It prints the sensor values to the serial 
+// monitor as numbers from 0 (maximum reflectance) to 2500 (minimum reflectance).
 
-#define FRONT_SENSOR_TRIG_PIN 42
-#define FRONT_SENSOR_ECHO_PIN 43
 
-#define FRONT_LEFT_SENSOR_TRIG_PIN 36
-#define FRONT_LEFT_SENSOR_ECHO_PIN 37
+#define NUM_SENSORS   8     // number of sensors used
+#define TIMEOUT       2500  // waits for 2500 microseconds for sensor outputs to go low
+#define EMITTER_PIN   44     // emitter is controlled by digital pin 2
 
-#define PWR_PIN_0 22 
-#define GND_PIN_0 52
+// sensors 0 through 7 are connected to digital pins 3 through 10, respectively
+QTRSensorsRC qtrrc((unsigned char[]) {30, 31, 32, 33, 34, 35, 36, 37},
+  NUM_SENSORS, TIMEOUT, EMITTER_PIN); 
+unsigned int sensorValues[NUM_SENSORS];
 
-#define BACK_LEFT_SENSOR_TRIG_PIN 28
-#define BACK_LEFT_SENSOR_ECHO_PIN 29
 
-#define FOLLOWING_DISTANCE 10
-#define FOLLOWING_TOLLERANCE 5
-
-struct distance {
-  long frontSide;
-  long backSide;
-  long front;
-};
-
-Ultrasonic front_ultrasonic(FRONT_SENSOR_TRIG_PIN,FRONT_SENSOR_ECHO_PIN);
-Ultrasonic front_side_ultrasonic(FRONT_LEFT_SENSOR_TRIG_PIN, FRONT_LEFT_SENSOR_ECHO_PIN);
-Ultrasonic back_side_ultrasonic(BACK_LEFT_SENSOR_TRIG_PIN, BACK_LEFT_SENSOR_ECHO_PIN);
-
-Servo rightServo, leftServo; 
-
-void stopServos() {
-  Serial.println("Stopping");
-  rightServo.write(RIGHT_SERVO_STOP);
-  leftServo.write(LEFT_SERVO_STOP);
-}
-
-void backwards() {
-  Serial.println("Moving backwards");
-  rightServo.write(180);
-  leftServo.write(0);
-}
-
-void forward() {
-  Serial.println("Moving forward");
-  rightServo.write(0);
-  leftServo.write(180);
-}
-
-void setup() {
-  Serial.begin(9600);
-  rightServo.attach(RIGHT_SERVO_PIN);
-  leftServo.attach(LEFT_SERVO_PIN);
-   
-  pinMode(PWR_PIN_0, OUTPUT);
-  digitalWrite(PWR_PIN_0, HIGH);
-  
-  pinMode(GND_PIN_0, OUTPUT);
-  digitalWrite(GND_PIN_0, LOW);
-}
-
-void printDistance(distance d) {
-  Serial.print("Front: ");
-  Serial.print(d.front);
-  Serial.print(" FrontSide: ");
-  Serial.print(d.frontSide);
-  Serial.print(" BackSide: ");
-  Serial.println(d.backSide);
-}
-
-distance calcDistance() {
-
-  distance calcD;
-  
-  long frontSideMicroSec = front_side_ultrasonic.timing();
-  calcD.frontSide = front_side_ultrasonic.CalcDistance(frontSideMicroSec, Ultrasonic::CM);
-  delay(2);
-  long backSideMicroSec = back_side_ultrasonic.timing();
-  calcD.backSide = back_side_ultrasonic.CalcDistance(backSideMicroSec, Ultrasonic::CM);
-  delay(2);
-  long frontMicroSec = front_ultrasonic.timing();
-  calcD.front = front_ultrasonic.CalcDistance(frontMicroSec, Ultrasonic::CM);
-  printDistance(calcD);
-  return calcD;  
-}
-
-void handleOutsideCorner() {
-  Serial.println("Hit outside corner");
-  // Initiate the left turn
-  float right = 0;
-  float left = LEFT_SERVO_STOP + 1;
-  leftServo.write(left);
-  rightServo.write(right);  
-  delay(900);
-  left = LEFT_SERVO_STOP + 2;
-  leftServo.write(left);
-  delay(700);
-  forward();
-  delay(2300);
-}
-
-void handleInsideCorner(distance d) {
-  Serial.println("Hit inside corner");
-  
-  
-  // Initiate the right turn
-  float left = 180;
-  float right = RIGHT_SERVO_STOP;
-  
-  leftServo.write(left);
-  rightServo.write(right);
-  delay(700);
-
-  do{
-    d = calcDistance();
-    leftServo.write(left);
-    rightServo.write(right);
-  } while(abs(d.frontSide-d.backSide)>2);
-  
-}
-
-void loop() {
-  distance d = calcDistance();
-  int rep = 0;
-  for (int i=0; i<5; i++) {
-    d = calcDistance();
-    if (d.front < (4 * FOLLOWING_DISTANCE)) {
-      rep++;
-    }
+void setup()
+{
+  delay(500);
+  Serial.begin(9600); // set the data rate in bits per second for serial data transmission
+  delay(1000);
+   int i;
+  for (i = 0; i < 250; i++)  // make the calibration take about 5 seconds
+  {
+    qtrrc.calibrate();
+    delay(20);
   }
-
-  // Follow wall
-  if (rep >= 5) {
-    handleInsideCorner(d);
-  } else if (d.frontSide > 7 * (d.backSide)) {
-    handleOutsideCorner();
-  } else {
-    float diff = 1.0 * d.frontSide - d.backSide;
-    const int desiredDiff = 2;
-    if (diff < -desiredDiff) {
-        rightServo.write(RIGHT_SERVO_STOP - 2);
-        leftServo.write(LEFT_SERVO_STOP + 10);
-
-    } else if ( diff > desiredDiff) {
-      rightServo.write(RIGHT_SERVO_STOP - 10);
-      leftServo.write(LEFT_SERVO_STOP + 2);
+}
 
 
-    } else {
-      forward();
-    }
-    
+void loop()
+{
+  // read raw sensor values
+  qtrrc.readCalibrated(sensorValues);
+
+  // print the sensor values as numbers from 0 to 2500, where 0 means maximum reflectance and
+  // 1023 means minimum reflectance
+  for (unsigned char i = 0; i < NUM_SENSORS; i++)
+  {
+    Serial.print(sensorValues[i]);
+    Serial.print('\t'); // tab to format the raw data into columns in the Serial monitor
   }
-  delay(10);
+  Serial.println();
+  
+  delay(250);
 }
