@@ -12,62 +12,59 @@
 #define EMITTER_PIN   44    // emitter is controlled by digital pin 2
 #define SENSOR_START_PIN 30
 
-#define BLACK_TAPE_MIN 750
-#define BLACK_TAPE_MAX 1000
+#define M_START 4
+#define M_RIGHT RIGHT_SERVO_STOP - M_START
+#define M_LEFT  LEFT_SERVO_STOP + M_START
 
-#define GRAY_TAPE_MIN 0
-#define GRAY_TAPE_MAX 250
+#define KP 0.01 * (M_START - 1)
+#define KD 0.01
 
+const int calibratedMax[NUM_SENSORS] = {2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500};
+const int calibratedMin[NUM_SENSORS] = { 348,  348, 296, 248, 252, 300, 300, 456 };
+int lastError = 0;
 Servo rightServo;
 Servo leftServo;
-QTRSensorsRC qtrc((unsigned char[]) { 30, 31, 32, 33, 34, 35, 36, 37}, NUM_SENSORS, TIMEOUT, QTR_NO_EMITTER_PIN); 
+QTRSensorsRC qtrc((unsigned char[]) { 30, 31, 32, 33, 34, 35, 36, 37}, NUM_SENSORS, TIMEOUT, EMITTER_PIN); 
 unsigned int sensorValues[NUM_SENSORS];
-
-void stopServos() {
-  Serial.println("Stopping");
-  rightServo.write(RIGHT_SERVO_STOP);
-  leftServo.write(LEFT_SERVO_STOP);
-}
-
-void backwards() {
-  Serial.println("Moving backwards");
-  rightServo.write(180);
-  leftServo.write(0);
-}
-
-void forward() {
-  Serial.println("Moving forwards");
-  rightServo.write(0);
-  leftServo.write(180);
-}
 
 void setup() {
   Serial.begin(9600);
-  
   rightServo.attach(RIGHT_SERVO_PIN);
   leftServo.attach(LEFT_SERVO_PIN);
 
-  delay(1000);
-  for (int i = 0; i < 250; i++) {
-    qtrc.calibrate();
-    delay(20);
+  qtrc.calibrate();
+
+  for (int i=0; i<NUM_SENSORS; i++) {
+    qtrc.calibratedMinimumOn[i] = calibratedMin[i];
+    qtrc.calibratedMaximumOn[i] = calibratedMax[i];
   }
+  
 }
 
-void readSensorValues() {
-  qtrc.readCalibrated(sensorValues);
-}
-
-
-
-void loop() {
-  readSensorValues();
-
+void printSensorValues() {
   for (unsigned char i = 0; i < NUM_SENSORS; i++) {
     Serial.print(sensorValues[i]);
     Serial.print('\t');
   }
   Serial.println();
-  
-  delay(250);
+}
+
+int readSensorValues() {
+  int position = qtrc.readLine(sensorValues);
+  // printSensorValues();
+  return position;
+}
+
+void loop() {
+  int position = readSensorValues();  
+  int error = position - (1000 * (NUM_SENSORS - 1))/2;
+  int motorSpeed = KP * error + KD * (error - lastError);
+  lastError = error;
+
+  int rightSpeed = min(180, max(0, M_RIGHT - motorSpeed));
+  int leftSpeed = min(180, max(0, M_LEFT - motorSpeed));
+
+  rightServo.write(rightSpeed);
+  leftServo.write(leftSpeed);
+  delay(2);
 }
