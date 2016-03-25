@@ -18,12 +18,12 @@
 
 #define THRESH 150 // Any calibrated value > THRESH is on gray or black
 
-#define M_START 4
+#define M_START 38
 #define M_RIGHT RIGHT_SERVO_STOP - M_START
 #define M_LEFT  LEFT_SERVO_STOP + M_START
 
-#define KP 0.0025 * (M_START - 3)
-#define KD 0.01
+#define KP 0.015
+#define KD 0.6
 
 const int calibratedMax[NUM_SENSORS] = {2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500};
 const int calibratedMin[NUM_SENSORS] = { 348,  348, 296, 248, 252, 300, 300, 456 };
@@ -82,65 +82,11 @@ int readSensorValues() {
     lastSensorValues[i] = sensorValues[i];
   }
   int position = qtrc.readLine(sensorValues);
-  //printSensorValues();
-
-  if (rightTripped()) {
-    lastTrippedRight = millis();
-  }
-
-  if (leftTripped()) {
-    lastTrippedLeft = millis();
-  }
-
-  if (frontTripped()) {
-    lastTrippedFront = millis();
-  }
   
   return position;
 }
 
-bool allOverLine() {
-  for (int i=0; i<NUM_SENSORS; i++){ 
-    if (sensorValues[i] < THRESH) {
-      return false;
-    }
-  }
-  return true;
-}
 
-bool noneOverLine() {
-  for (int i=0; i<NUM_SENSORS; i++) {
-    if (sensorValues[i] > THRESH) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool frontTripped() {
-  float front = analogRead(FRONT_IR_PIN);
-
-  if (front > THRESH) {
-    for (int i=0; i<5; i++) {
-      front = analogRead(FRONT_IR_PIN);
-      if (front < THRESH) {
-        return false;
-      }
-    }
-  }
-  
-  return front > THRESH;
-}
-
-bool rightTripped() {
-  float right = analogRead(RIGHT_IR_PIN);
-  return right > THRESH;
-}
-
-bool leftTripped() {
-  float left = analogRead(LEFT_IR_PIN);
-  return left > THRESH;
-}
 
 void loop() {
   int position = readSensorValues();  
@@ -151,63 +97,6 @@ void loop() {
   int rightSpeed = min(180, max(0, M_RIGHT - motorSpeed));
   int leftSpeed = min(180, max(0, M_LEFT - motorSpeed));
 
-//  if (rightTripped() && leftTripped()) {
-//
-//    rightServo.write(0);
-//    leftServo.write(180);
-//    delay(5);
-//    
-//    if (frontTripped()) {
-//        rightSpeed = 0;
-//        leftSpeed = 180;
-//    } else {
-//
-//      rightServo.write(180);
-//      leftServo.write(180);
-//
-//      while (!frontTripped()) {
-//        delay(1);
-//      }
-//      
-//      return;
-//    }
-//  } else if (!rightTripped() && !frontTripped()) {
-//
-//       rightServo.write(0);
-//      leftServo.write(0);
-//      while (!frontTripped()) {
-//        delay(1);
-//      }
-//      return;
-//  } else if (!leftTripped() && !frontTripped()) {
-//
-//
-//       rightServo.write(180);
-//      leftServo.write(180);
-//      while (!frontTripped()) {
-//        delay(1);
-//      }
-//      return;
-//  }
-//
-//  if (noneOverLine()) {
-//    Serial.println("None over the line");
-//    rightServo.write(180);
-//    leftServo.write(0);
-//    delay(50);
-//
-//     rightServo.write(180);
-//     leftServo.write(180);
-//     delay(40);
-//
-//     rightServo.write(0);
-//     delay(40);
-//    
-//    return;
-//  }
-//  
   rightServo.write(rightSpeed);
   leftServo.write(leftSpeed);
-  delay(3);
-  
 }
