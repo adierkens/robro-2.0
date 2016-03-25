@@ -18,12 +18,12 @@
 
 #define THRESH 150 // Any calibrated value > THRESH is on gray or black
 
-#define M_START 40
+#define M_START 90
 #define M_RIGHT RIGHT_SERVO_STOP - M_START
 #define M_LEFT  LEFT_SERVO_STOP + M_START
 
-#define KP 0.016
-#define KD 0.65
+#define KP 0.03
+#define KD 1.7
 
 const int calibratedMax[NUM_SENSORS] = {2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500};
 const int calibratedMin[NUM_SENSORS] = { 348,  348, 296, 248, 252, 300, 300, 456 };
