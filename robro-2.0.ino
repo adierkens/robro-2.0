@@ -5,8 +5,10 @@
 #define RIGHT_SERVO_PIN 10
 #define LEFT_SERVO_PIN 9
 
-#define RIGHT_SERVO_STOP 95
-#define LEFT_SERVO_STOP 93
+#define RIGHT_SERVO_STOP 90
+#define LEFT_SERVO_STOP 90
+
+#define BALL_SENSOR_THRESH 700
 
 #define SENSOR_TRIG_PIN 44
 #define SENSOR_ECHO_PIN 45
@@ -14,22 +16,24 @@
 
 #define NUM_SENSORS   8     // number of sensors used
 #define TIMEOUT       2500  // waits for 2500 microseconds for sensor outputs to go low
-#define EMITTER_PIN   44    // emitter is controlled by digital pin 2
+#define EMITTER_PIN   32    // emitter is controlled by digital pin 2
 #define SENSOR_START_PIN 30
 
-#define M_START 4
+#define M_START 3
 #define M_RIGHT RIGHT_SERVO_STOP - M_START
 #define M_LEFT  LEFT_SERVO_STOP + M_START
 
-#define KP 0.01 * (M_START - 1)
-#define KD 0.01
+#define KP 0.007
+#define KD 0.02
 
 #define SENSOR_THRESHOLD 300
 #define DIST_THRESHOLD 30
 
+#define BALL_TRIGGER_PIN 48
 
 const int calibratedMax[NUM_SENSORS] = {2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500};
 const int calibratedMin[NUM_SENSORS] = { 348,  348, 296, 248, 252, 300, 300, 456 };
+
 int lastError = 0;
 Ultrasonic ultrasonic(SENSOR_TRIG_PIN,SENSOR_ECHO_PIN);
 Servo rightServo;
@@ -37,20 +41,6 @@ Servo leftServo;
 QTRSensorsRC qtrc((unsigned char[]) { 22, 23, 24, 25, 26, 27, 28, 29}, NUM_SENSORS, TIMEOUT, EMITTER_PIN); 
 unsigned int sensorValues[NUM_SENSORS];
 boolean ballFound = false;
-
-void setup() {
-  Serial.begin(9600);
-  rightServo.attach(RIGHT_SERVO_PIN);
-  leftServo.attach(LEFT_SERVO_PIN);
-
-  qtrc.calibrate();
-
-  for (int i=0; i<NUM_SENSORS; i++) {
-    qtrc.calibratedMinimumOn[i] = calibratedMin[i];
-    qtrc.calibratedMaximumOn[i] = calibratedMax[i];
-  }
-  
-}
 
 void printSensorValues() {
   for (unsigned char i = 0; i < NUM_SENSORS; i++) {
@@ -62,38 +52,27 @@ void printSensorValues() {
 
 int readSensorValues() {
   int position = qtrc.readLine(sensorValues);
-  // printSensorValues();
   return position;
 }
 
 void forward(){
-  Serial.printIn("Moving forward");
   rightServo.write(0);
   leftServo.write(180);
 }
 
-void backward(){
-  Serial.printIn("Moving backward");
+void backwards(){
   rightServo.write(180);
   leftServo.write(0);
 }
 
 void turnRight(){
-  Serial.printIn("Turning right");
-  do{
-    rightServo.write(0);
-    leftServo.write(0);
-
-    readSensorValues();
-  }while(sensorValues[4] > SENSOR_THRESHOLD && sensorValues[5] < SENSOR_THRESHOLD);
+  rightServo.write(180);
+  leftServo.write(180);
 }
 
-
 void turnLeft(){
-  Serial.printIn("Turning left");
-    rightServo.write(RIGHT_SERVO_STOP);
-    leftServo.write(180);
-    delay(700);
+  rightServo.write(0);
+  leftServo.write(0);
 }
 
 void trackLine() {
@@ -110,47 +89,118 @@ void trackLine() {
   delay(2);
 }
 
-void startRun(){
-  do{
-      forward();
-      int numSensorsOn = 0;  
-      readSensorValues();
-      for (unsigned char i = 0; i < NUM_SENSORS; i++) {
-        if (sensorValues[i] > SENSOR_THRESHOLD){
-          numSensorsOn++
-          }
-  }while(numSensorsOn != NUM_SENSORS);
+bool hitLine() {
+  readSensorValues();
+  for (int i=0; i < NUM_SENSORS; i++) {
+    if (sensorValues[i] > SENSOR_THRESHOLD) {
+      return true;
+    }
+  }
+  return false;
 }
 
-void printDistance(long d){
-  Serial.print("Distance: ");
-  Serial.print(d);
+bool allOnLine() {
+  readSensorValues();
+  for (int i=0; i < NUM_SENSORS; i++) {
+    if (sensorValues[i] <= SENSOR_THRESHOLD) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool senseBall() {
+  for (int i=0; i<2; i++) {
+      float dist = calcDistance();
+      if (dist > DIST_THRESHOLD) {
+        return false;
+      }
+  }
+
+  return true;
+
+}
+
+void right90() {
+  turnRight();
+  delay(600);
+}
+
+void left90() {
+  turnLeft();
+  delay(100);
+}
+
+bool readyToFire() {
+  float analogOut = analogRead(1);
+  Serial.println(analogOut);
+  return analogOut < BALL_SENSOR_THRESH;
+}
+
+void falconKick() {
+  forward();
+  delay(10);
+  do {
+    delay(2);
+  } while(!readyToFire());
+  
+  digitalWrite(BALL_TRIGGER_PIN, HIGH);
+  delay(100);
+  digitalWrite(BALL_TRIGGER_PIN, LOW);
+  delay(1000);
 }
 
 long calcDistance(){
   int calcD;
   long frontMicroSec = ultrasonic.timing();
   calcD = ultrasonic.CalcDistance(frontMicroSec, Ultrasonic::CM);
-  printDistance(calcD); 
-  
   return calcD;
 }
 
-void loop() {
-  startRun();
+
+
+void loop() {  
+  rightServo.write(90);
+  leftServo.write(90);
+}
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(BALL_TRIGGER_PIN, OUTPUT);
+  rightServo.attach(RIGHT_SERVO_PIN);
+  leftServo.attach(LEFT_SERVO_PIN);
+
+  qtrc.calibrate();
+
+  for (int i=0; i<NUM_SENSORS; i++) {
+    qtrc.calibratedMinimumOn[i] = calibratedMin[i];
+    qtrc.calibratedMaximumOn[i] = calibratedMax[i];
+  }
+
+  pinMode(33, OUTPUT);
+  pinMode(32, OUTPUT);
+  digitalWrite(33, HIGH);
+  digitalWrite(32, LOW);
+
+
+  do {
+    forward();
+  } while (!hitLine());
 
   turnRight();
+  delay(700);
 
-  do{
+  do {
     trackLine();
-    long d = calcDistance();
-    if (d < DIST_THRESHOLD){
-      ballFound = true;
-      }
-    }while(!ballFound)
-  
+  } while(!senseBall());
+
+
+  backwards();
+  delay(250);
+
   turnLeft();
+  delay(850);
 
-
+  falconKick();
 
 }
