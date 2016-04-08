@@ -19,12 +19,12 @@
 #define EMITTER_PIN   32    // emitter is controlled by digital pin 2
 #define SENSOR_START_PIN 30
 
-#define M_START 3
+#define M_START 4
 #define M_RIGHT RIGHT_SERVO_STOP - M_START
 #define M_LEFT  LEFT_SERVO_STOP + M_START
 
 #define KP 0.007
-#define KD 0.02
+#define KD 0.03
 
 #define SENSOR_THRESHOLD 300
 #define DIST_THRESHOLD 30
@@ -111,7 +111,7 @@ bool allOnLine() {
 
 bool senseBall() {
   for (int i=0; i<2; i++) {
-      float dist = calcDistance();
+      int dist = calcDistance();
       if (dist > DIST_THRESHOLD) {
         return false;
       }
@@ -140,14 +140,20 @@ bool readyToFire() {
 void falconKick() {
   forward();
   delay(10);
+  
   do {
     delay(2);
+    
   } while(!readyToFire());
   
   digitalWrite(BALL_TRIGGER_PIN, HIGH);
   delay(100);
   digitalWrite(BALL_TRIGGER_PIN, LOW);
-  delay(1000);
+
+  while(!hitLine()) {
+    delay(1);
+  }
+  
 }
 
 long calcDistance(){
@@ -183,9 +189,12 @@ void setup() {
   digitalWrite(32, LOW);
 
 
+
   do {
     forward();
   } while (!hitLine());
+
+  delay(40);
 
   turnRight();
   delay(700);
@@ -196,7 +205,7 @@ void setup() {
 
 
   backwards();
-  delay(250);
+  delay(200);
 
   turnLeft();
   delay(850);
